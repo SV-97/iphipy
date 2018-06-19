@@ -69,10 +69,13 @@ class System():
         # the other parameters can be set either to strings that sp.symbols can convert to symbols or tuples of sympy symbols
         params = [Z,R,L,C,Y,G]
         for i in range(len(params)):
-            if type(params[i]) != type(sp.symbol) and params[i] != ():
-                params[i] = sp.symbols(params[i])
-                if type(params[i]) != tuple:
-                    params[i] = (params[i],)
+            if not isinstance(params[i], (type(sp.symbol), sp.Add, sp.Mul)) and params[i] != ():
+                if type(params[i]) == tuple:
+                    if isinstance(params[i][0], (type(sp.symbol), sp.Add, sp.Mul)):
+                        break
+                params[i] = sp.symbols(params[i], seq=True)
+                #if type(params[i]) != tuple:
+                #    params[i] = (params[i],)
         Z,R,L,C,Y,G = params
         self.R = R
         try:
@@ -95,10 +98,10 @@ class System():
             self.Z = sp.simplify(sum(self.Z) + 
                                  System.ps_conv(sum(self.Y)) + 
                                  self.Rg +
-                                 1j*( self.omega*self.Lg 
+                                 sp.I*( self.omega*self.Lg 
                                      - self.omega*
                                      self.Cg ))
             self.Y = System.CCE(self.Z)
         else:
-            self.Y = sp.simplify(System.ps_conv(sum(self.Z)) + sum(self.Y) + 1/System.ps_conv(self.R) + 1j* (1/(self.omega*self.Cg) - 1/(self.omega*self.Lg)))
+            self.Y = sp.simplify(System.ps_conv(sum(self.Z)) + sum(self.Y) + 1/System.ps_conv(self.R) + sp.I* (1/(self.omega*self.Cg) - 1/(self.omega*self.Lg)))
             self.Z = System.CCE(self.Y)
