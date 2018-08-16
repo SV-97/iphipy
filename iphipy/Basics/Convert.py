@@ -1,5 +1,4 @@
 import numpy as np
-from EEToolbox.Basics.Complex import CCE
 
 @np.vectorize
 def R_to_G(R): #resistance to conductance
@@ -16,11 +15,3 @@ def X_to_B(X): #reactance to susceptance
 @np.vectorize
 def B_to_X(B): #susceptance to reactance
     return G_to_R(B)
-
-@np.vectorize
-def Z_to_Y(Z): #impedance to admittance
-    return CCE(Z)
-    
-@np.vectorize
-def Y_to_Z(Y): #admittance to impedance
-    return CCE(Y)

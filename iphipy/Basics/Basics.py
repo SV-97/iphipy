@@ -42,7 +42,7 @@ def Frequencyband(stop,start=0,n=500000,*,f = (), O = 1e-50):
     """
 Frequency band with n values from start to stop
 0 is automatically removed to avoid div by zero errors
-If you explicitly want 0 in the band you can keep it in by setting O to that value, if you simply want it out you can do so by assigning an empty string to O. 
+If you explicitly want 0 in the band you can keep it in by setting O to 0, if you simply want it out you can do so by assigning an empty string to O. 
 If you set another value to O it's added to the frequency band and it's sorted afterwards.
     """
     f = np.linspace(start,stop,n)
@@ -68,5 +68,5 @@ If you set another value to O it's added to the frequency band and it's sorted a
 @np.vectorize
 def Resonance(L,C): #resonance frequency and omega of a basic parallel or series resonance circuit
     omega_r = 1/(np.sqrt(L*C))
-    f_r = omega_r/(2*pi)
+    f_r = omega_r/(2*np.pi())
     return (f_r, omega_r)
