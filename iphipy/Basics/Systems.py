@@ -50,6 +50,9 @@ class Component():
         self._symbolic_impedance = None
         self._symbolic_admittance = None
 
+    def __str__(self):
+        return "{class_} {name} = {value}".format(class_ = self.__class__.__name__, name = self.name, value = self.value)
+
 class Resistor(Component):
     """Resistive load
     
@@ -76,6 +79,7 @@ class Resistor(Component):
 
     def __init__(self, name, value):
         super().__init__(name, value)
+
 
 class FrequencyDependentComponent(Component):
     """General frequency dependant resistor
@@ -213,3 +217,11 @@ class System(Component):
         del self.value # Systems don't have a value
         self.mode = mode
         self.components = components
+
+    def __str__(self):
+        return """System {name} with Components {cmp}
+        Configuration = {mode}
+        Equations are:
+        Impedance: {imp}
+        Admittance: {admt}
+        """.format(name = self.name, cmp = list(map(lambda s: str(s),self.components)), imp = self.symbolic_impedance, admt = self.symbolic_admittance, mode = self.mode)
