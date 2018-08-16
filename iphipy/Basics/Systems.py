@@ -236,3 +236,49 @@ class System(Component):
         abs_ = sp.Abs(self.impedance)
         derivative = sp.diff(abs_, frequency)
         return mpmath.findroot(sp.lambdify(frequency,derivative), 1)
+
+    def _nyquist(self, range_, frequency, mode):
+        """Plot a nyquist plot for the System
+        Args:
+            range_ (range object or nparray): Range for the frequency/frequencyband
+            frequency (sp.core.symbol.Symbol): Symbol of the frequency of the system
+            mode (str): decides if impedance or admittance is plotted
+        Returns:
+            multiprocessing.Process: Process of the plot
+        """
+        range_ = np.asarray(range_)
+        if range_[0] == 0:
+            range_ = range_[1:]
+        elif range_[0] < 0:
+            return None
+        frequencyband = range_
+        if mode == "impedance":
+            lambda_func = sp.lambdify(frequency, self.impedance)
+        elif mode == "admittance":
+            lambda_func = sp.lambdify(frequency, self.admittance)
+        else:
+            raise ValueError("Selected mode doesn't exist")
+        lambda_func = np.vectorize(lambda_func)
+        nyquist = lambda_func(frequencyband)
+
+        plt.plot(nyquist.real, nyquist.imag)
+        plt.ylabel(r"Im[{}]/$\Omega$".format(self.name) if mode == "impedance" else r"Im[{}]/$S$".format(self.name))
+        plt.xlabel(r"Re[{}]/$\Omega$".format(self.name) if mode == "impedance" else r"Re[{}]/$S$".format(self.name))
+        plt.gcf().canvas.set_window_title("{} {}".format(mode, self.name))
+        plt.show()
+
+    def nyquist(self, range_, frequency, mode = "impedance"):
+        """Plot a nyquist plot for the System in a new process
+        Args:
+            range_ (range object or nparray): Range for the frequency/frequencyband
+            frequency (sp.core.symbol.Symbol): Symbol of the frequency of the system
+            mode (str): decides if impedance or admittance is plotted
+        Returns:
+            multiprocessing.Process: Process of the plot
+        """
+        #t = threading.Thread(target=self._nyquist, name = "nyquist plot {} {}".format(mode, self.name), args = (range, frequency, mode))
+        #t.start()
+        #return t
+        p = Process(target=self._nyquist, name = "nyquist plot {} {}".format(mode, self.name), args = (range_, frequency, mode))
+        p.start()
+        return p
