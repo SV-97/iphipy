@@ -225,3 +225,14 @@ class System(Component):
         Impedance: {imp}
         Admittance: {admt}
         """.format(name = self.name, cmp = list(map(lambda s: str(s),self.components)), imp = self.symbolic_impedance, admt = self.symbolic_admittance, mode = self.mode)
+
+    def resonance(self, frequency):
+        """Get resonance frequency of system
+        Args:
+            f (sp.core.symbol.Symbol): Symbol of the frequency of the system
+        Returns:
+            complex: resonance frequency
+        """
+        abs_ = sp.Abs(self.impedance)
+        derivative = sp.diff(abs_, frequency)
+        return mpmath.findroot(sp.lambdify(frequency,derivative), 1)
