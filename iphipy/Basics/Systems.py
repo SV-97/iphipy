@@ -1,11 +1,13 @@
-import sympy as sp
-import numpy as np
 import mpmath
+from multiprocessing import Process
+import threading
+import matplotlib.pyplot as plt
+import numpy as np
+import sympy as sp
 
 """Provides classes for dealing with electrical circuits
-Todo:
-    Resonance frequency calculation
-    Evaluation with values (should be possible atm but only via sympy)
+ToDo:
+
 """
 
 def _ee_symbol(name):
