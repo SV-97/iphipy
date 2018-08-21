@@ -7,12 +7,18 @@ import sympy as sp
 
 """Provides classes for dealing with electrical circuits
 ToDo:
-
+implementing __slots__() for all classes(no inheritance!)
+finding out why DC plotting process name is messed up
 """
 
-def _ee_symbol(name):
+def _checkrange(range_):
+        if len(range_)<=500:
+            range_ = np.linspace(range_[0],range_[-1], 50e3)
+        range_ = np.asarray(range_)
+        return range_
+
+def ee_symbol(name):
     """generate a sympy symbol with settings fitting for electrical engineering applications
-    
     """
     return sp.symbols(name, real = True, nonzero = True)
 
