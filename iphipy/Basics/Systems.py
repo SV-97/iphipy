@@ -49,7 +49,7 @@ class Component():
 
     def __init__(self, name, value):
         self.name = name
-        self.symbol = _ee_symbol(name)
+        self.symbol = ee_symbol(name)
         self.value = value
         self._impedance = None
         self._admittance = None
@@ -86,7 +86,6 @@ class Resistor(Component):
     def __init__(self, name, value):
         super().__init__(name, value)
 
-
 class FrequencyDependentComponent(Component):
     """General frequency dependant resistor
     Attributes:
@@ -98,7 +97,7 @@ class FrequencyDependentComponent(Component):
             frequency (str or sp.core.symbol.Symbol): Frequency that's to be used in expressions of the Component
         """
         super().__init__(name, value)
-        self.frequency = frequency if isinstance(frequency, sp.Symbol) else _ee_symbol(frequency)
+        self.frequency = frequency if isinstance(frequency, sp.Symbol) else ee_symbol(frequency)
 
 class Capacitor(FrequencyDependentComponent):
     """Capacitive Load
@@ -184,7 +183,7 @@ class System(Component):
         self._modecheck()
         internal_property = "_"+property_
         sum_ = sum(getattr(cmp, property_) for cmp in self.components)
-        if self.mode =="series":
+        if self.mode == "series":
             if property_ in ("impedance", "symbolic_impedance"):
                 setattr(self, internal_property, sum_)
             else:
@@ -212,7 +211,7 @@ class System(Component):
     symbolic_admittance = property(get_symbolic_admittance, None, None, _doc)
     del _doc
 
-    def __init__(self, name, components, mode = "series",):
+    def __init__(self, name, components, mode = "series", ):
         """
         Args:
             name (str): Name of the symbol for the system
@@ -230,7 +229,7 @@ class System(Component):
         Equations are:
         Impedance: {imp}
         Admittance: {admt}
-        """.format(name = self.name, cmp = list(map(lambda s: str(s),self.components)), imp = self.symbolic_impedance, admt = self.symbolic_admittance, mode = self.mode)
+        """.format(name = self.name, cmp = list(map(lambda s: str(s), self.components)), imp = self.symbolic_impedance, admt = self.symbolic_admittance, mode = self.mode)
 
     def resonance(self, frequency):
         """Get resonance frequency of system
@@ -241,7 +240,7 @@ class System(Component):
         """
         abs_ = sp.Abs(self.impedance)
         derivative = sp.diff(abs_, frequency)
-        return mpmath.findroot(sp.lambdify(frequency,derivative), 1)
+        return mpmath.findroot(sp.lambdify(frequency, derivative), 1)
 
     def _nyquist(self, range_, frequency, mode):
         """Plot a nyquist plot for the System
@@ -252,7 +251,8 @@ class System(Component):
         Returns:
             multiprocessing.Process: Process of the plot
         """
-        range_ = np.asarray(range_)
+        range_ = _checkrange(range_)
+
         if range_[0] == 0:
             range_ = range_[1:]
         elif range_[0] < 0:
