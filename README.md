@@ -1,4 +1,4 @@
-iphipy aims to be an open source toolbox to handle circuits or provide formulas/functions from the area of electrical engineering.
+iphipy aims to be an open source toolbox to handle circuits(Linear circuit analysis/simulation) or provide formulas/functions from the area of electrical engineering.
 Feature requests or contributions are very welcome.
 
 To check out it's features and see examples check iphipy/__init__.sqf
