@@ -11,6 +11,28 @@ ToDo:
     finding out why DC plotting process name is messed up
     DC-equivalent voltage calculation of voltage: solve U² = 1/T * integral from 0 to T of u² for u²
 """
+mixed_source_counter = 1
+
+def eval(expr, args = None):
+    """Lambdify and vectorize an expression
+    Args:
+        expr (Sympy Expression): Expression to evaluate
+        args (iterable of sp.core.symbol.Symbol or None): symbols in whose respect the expression should be evaluated. 
+                Standart is evaluation in respect to all symbols
+    Returns:
+        Tuple:
+            (function,
+            sorted list of parameters)
+    """
+    free = expr.free_symbols
+    if args != None:
+        args = set(args)
+        if not args.issubset(free):
+            raise ValueError("Args contains symbols that are not in the expression")
+    else:
+        args = free
+    args = list(args)
+    return (np.vectorize(sp.lambdify(args, expr)), args)
 
 def _checkrange(range_):
         if len(range_)<=500:
