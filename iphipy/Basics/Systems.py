@@ -7,8 +7,9 @@ import sympy as sp
 
 """Provides classes for dealing with electrical circuits
 ToDo:
-implementing __slots__() for all classes(no inheritance!)
-finding out why DC plotting process name is messed up
+    implementing __slots__() for all classes(no inheritance!)
+    finding out why DC plotting process name is messed up
+    DC-equivalent voltage calculation of voltage: solve U² = 1/T * integral from 0 to T of u² for u²
 """
 
 def _checkrange(range_):
