@@ -101,3 +101,31 @@ def dc_test():
     p1 = source1.plot(range(-10,11)) # use plotting function
     p1.join()
 # dc_test()
+def circuit_test():
+    # Define all Sources you want
+    t = sys.ee_symbol("t")
+    source1 = sys.ACSource("source1", 10, 0, 1, t, mode = "AC sine")
+    source2 = sys.ACSource("source2", 2, 0, 10, t, mode = "AC sine")
+    grnd = sys.Ground()
+    source3 = source1 + source2 # equal to sys.MixedSource(source1, source2)
+    print(source3.peakvoltage)
+    p1 = source3.plot(np.linspace(0,1/source3.frequency,100e3), t) #show voltage plot
+    
+    # Define your System
+    f = sys.ee_symbol("f") # define your frequency
+    R1 = sys.Resistor("R1", 100) # define your components
+    R2 = sys.Resistor("R2", 100)
+    R3 = sys.Resistor("R3", 1e3)
+    L1 = sys.Inductance("L1", 10e-3, f)
+    C1 = sys.Capacitor("C1", 20e-6, f)
+    Z1 = sys.System("Z1", (R1, L1, C1, R2)) # define your systems
+    Z2 = sys.System("Z2", (R3, Z1), "parallel")  
+
+    # Define your Circuit
+    crct = sys.Circuit(source3, Z2, grnd)
+    print(crct.current)
+    p2 = crct.plot(np.linspace(0,1/source3.frequency,100e3), t, complex_ = True)
+    p1.join()
+    p2.join()
+circuit_test()
+print("end")
