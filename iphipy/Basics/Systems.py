@@ -325,7 +325,9 @@ class VoltageSource():
         self.mode = mode
         self.reference = reference
         self.voltage = voltage+reference
-    
+        self.frequency = 0
+        self.base_sources = (self,)
+
 class DCSource(VoltageSource):
     """DC Source for various waveforms
     Args:
@@ -336,7 +338,6 @@ class DCSource(VoltageSource):
     """
     def __init__(self, name, voltage, reference, mode = "DC"):
         super().__init__(self, mode, voltage, reference)
-
     
     def _plot(self, range_):
         """Plot the voltage for the Source
@@ -515,6 +516,8 @@ class ACSource(VoltageSource):
                 self.symbolic_voltage = self._triwave(symbolic_peakvoltage, symbolic_frequency, time, self.phase, symbolic_reference)
             elif self.mode == "AC rect":
                 self.symbolic_voltage = self._rectwave(symbolic_peakvoltage, symbolic_frequency, time, self.phase, symbolic_reference)
+            elif self.mode == "AC Mixed":
+                pass
             else:
                 raise ValueError("Selected mode doesn't exist")
         if self.mode == "AC sine":
@@ -523,6 +526,8 @@ class ACSource(VoltageSource):
             self.voltage = self._triwave(peakvoltage, frequency, time, self.phase, reference)
         elif self.mode == "AC rect":
             self.voltage = self._rectwave(peakvoltage, frequency, time, self.phase, reference)
+        elif self.mode == "AC Mixed":
+            pass
         else: 
             raise ValueError("Selected mode doesn't exist")
 
@@ -556,3 +561,191 @@ class ACSource(VoltageSource):
         p = Process(target = self._plot, name = "voltage plot {}".format(self.name), args = (range_, time))
         p.start()
         return p
+    
+    def __add__(self, other):
+        return MixedSource(self, other)
+
+    """ commented out because it takes ages and using __add__ and propagating the base formulas is a quicker and more importantly exact method
+    def fourier_analysis(self):
+        Caculate fourier series of voltage
+        Extremely slow
+        Once calculated the fourier series can be accessed as attribute
+        Returns:
+            Fourier series
+        
+        self.fourier_series = sp.fourier_series(self.voltage,(self.time, -1/self.frequency, 1/self.frequency ))
+        return self.fourier_series
+    """
+
+class MixedSource(ACSource):
+    mixed_source_counter = 1
+
+    @staticmethod
+    def _gcd(x1, x2):
+        """Find Greatest Common Divisor (gcd) of two values
+        Args:
+            x1 (numeric): Value one
+            x2 (numeric): Value two
+        Returns:
+            None: If there's no gcd
+            float: gcd
+        """
+        if x1 <= x2:
+            gcd = x1
+        else:
+            gcd = x2
+        while not (x1/gcd).is_integer() or not (x2/gcd).is_integer():
+            gcd -= 1
+            if gcd <= 0:
+                return None
+        else:
+            return gcd
+
+    def __init__(self, source1, source2):
+        """Create "Metasource" out of two sources
+        Connects both sources on one pole, the other poles remain at ground, essentially creating a mixed signal source
+        Requires that both sources use the same time symbol
+        """
+        if "mixed_source_counter" not in locals(): 
+            mixed_source_counter = 0
+        name = "Mixed Source {}".format(mixed_source_counter)
+        mixed_source_counter += 1
+        voltage = source1.voltage + source2.voltage
+        
+        frequency = self._gcd(source1.frequency, source2.frequency)
+        if frequency is not None:
+            period = 1/frequency
+            range_1 = np.linspace(period, 2*period, 20e3) # bruteforcing approximation of peakvoltage
+            voltage_lambda = eval(voltage)[0]
+            voltages = voltage_lambda(range_1)
+            max1 = voltages.max()
+            index = np.where(voltages == max1)[0]
+            if index not in [0, int(20e3)-1]: # checking for edge cases - first/last item
+                range_2 = np.linspace(voltages[index-1], voltages[index+1], 200e3)
+            elif index == 0:
+                range_2 = np.linspace(voltages[index], voltages[index+1], 200e3)
+            elif index == int(20e3)-1:
+                range_2 = np.linspace(voltages[index-1], voltages[index], 200e3)
+            voltages_2 = voltage_lambda(range_2)
+            peak = voltages_2.max()
+        else:
+            peak = source1.peakvoltage+source2.peakvoltage # Can't have None, so worst case it is
+
+        """Analytical approach would need to find all roots in one T and choose the one where f(x0) is max
+        dx = sp.diff(voltage, source1.time) # find peakvoltage of new source
+        lambda_dx  = sp.lambdify(source1.time, dx)
+        print(lambda_dx(0))
+        time_at_peak = mpmath.findroot(lambda_dx, 0)
+        peak = voltage.subs(source1.time, time_at_peak)
+        """
+        super().__init__(name, peak, 0, frequency, source1.time, "AC Mixed")
+        self.voltage = voltage
+        try:
+            if source1._symbolic & source2._symbolic:
+                self.symbolic_voltage = source1.symbolic_voltage + source2.symbolic_voltage
+            elif source1._symbolic:
+                self.symbolic_voltage = source1.symbolic_voltage + source2.voltage
+            elif source2._symbolic:
+                self.symbolic_voltage = source1.voltage + source2.symbolic_voltage
+        except AttributeError as err:
+            error_messages = ("'{}' object has no attribute '_symbolic'".format(instance.__class__.__name__) for instance in [source1, source2])
+            if not err.args[0] in error_messages:
+                raise
+        self.base_sources = (*source1.base_sources, *source2.base_sources)
+        self.mode = "Mixed AC"
+        del self.phase
+
+class Ground(VoltageSource):
+    """Ground for Circuits
+    Basically a DC source with 0V Potential
+    Attributes:
+        name (str): always "grnd"
+        voltage (int): always 0
+    """
+    def __init__(self):
+        super().__init__("ground", "Ground", 0)
+
+    @staticmethod
+    @np.vectorize
+    def voltage_func(x = None):
+        """Convenience function that always returns 0 and is vectorized
+        """
+        return 0
+
+class Circuit():
+    """
+    Args:
+        source1 (:VoltageSource: or :Ground:): Voltage source that's connected to one side of the circuit
+        source2 (:VoltageSource: or :Ground:): Voltage source that's connected to the other side of the circuit
+        system (:System:): Components between the poles
+    """
+    def __init__(self, source1, system, source2):
+        self.source1 = source1
+        self.source2 = source2
+        self.voltage = self.source1.voltage - self.source2.voltage
+        self.system = system
+        dc = (DCSource, Ground)
+        if isinstance(source1, dc) and isinstance(source2, dc):
+            self.frequency = 0
+        elif isinstance(source1, ACSource) and isinstance(source2, dc):
+            self.frequency = (source1.frequency,)
+        elif isinstance(source1, dc) and isinstance(source2, ACSource):
+            self.frequency = (source2.frequency,)
+        elif isinstance(source1, ACSource) and isinstance(source2, ACSource):
+            self.frequency = (source1.frequency , source2.frequency)
+        else:
+            raise ValueError("False type of source")
+        
+        self.name = "{}-{}-{}".format(source1.name, system.name, source2.name)
+
+        # superposition solving
+        # If you've got a custom source you have to do a fourier series expansion and 
+        # calculate the current for each coefficient with respective frequency -> then superimpose them
+        base_sources = (*self.source1.base_sources,*self.source2.base_sources)
+       
+        currents = []
+        lamb_impedance = eval(self.system.impedance)[0]
+        for source in base_sources:
+            try:
+                current = source.voltage/lamb_impedance(source.frequency) if source in self.source1.base_sources else -source.voltage/lamb_impedance(source.frequency)
+            except ZeroDivisionError:
+                current = 0
+            currents.append(current)
+        self.current = sum(currents)
+
+    def _plot(self, range_, time, complex_):
+        """Plot the current for the Circuit
+        Args:
+            range_ (range object or nparray): Range for the time
+            time (sp.core.symbol.Symbol): Symbol of the time of the circuit
+        """
+        range_ = _checkrange(range_)
+
+        lambda_func = sp.lambdify(time, self.current)
+        lambda_func_vec = np.vectorize(lambda_func)
+        current = lambda_func_vec(range_)
+        
+        if complex_:
+            plt.plot(range_, current.real, label = "real")
+            plt.plot(range_, current.imag, label = "imaginary")
+            plt.plot(range_, np.sqrt(current.real**2+current.imag**2), label = "abs(i)")
+        else:
+            plt.plot(range_, np.sqrt(current.real**2+current.imag**2))
+        plt.ylabel(r"$i_{0}/A$".format(self.name))
+        plt.xlabel(r"$t_{0}/s$".format(self.name))
+        plt.gcf().canvas.set_window_title("{}".format(self.name))
+        plt.legend()
+        plt.show()
+
+    def plot(self, range_, time, complex_):
+        """Plot the current for the Circuit
+        Args:
+            range_ (range object or nparray): Range for the time
+            time (sp.core.symbol.Symbol): Symbol of the time of the circuit
+        Returns:
+            multiprocessing.Process: Process of the plot
+        """
+        p = Process(target = self._plot, name = "current plot {}".format(self.name), args = (range_, time, complex_))
+        p.start()
+        return p
+    
