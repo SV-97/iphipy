@@ -203,16 +203,21 @@ class System(Component):
         Returns:
             The internal property
         """
+        impendaces = ("impedance", "symbolic_impedance")
+        admittances = ("admittance", "symbolic_admittance")
         self._modecheck()
         internal_property = "_"+property_
-        sum_ = sum(getattr(cmp, property_) for cmp in self.components)
+        if self.mode == "series" and property_ in impendaces or self.mode == "parallel" and property_ in admittances:
+            sum_ = sum(getattr(cmp, property_) for cmp in self.components)
+        else:
+            sum_ = sum(1/getattr(cmp, property_) for cmp in self.components)
         if self.mode == "series":
-            if property_ in ("impedance", "symbolic_impedance"):
+            if property_ in impendaces:
                 setattr(self, internal_property, sum_)
             else:
                 setattr(self, internal_property, 1/sum_)
         else:
-            if property_ in ("impedance", "symbolic_impedance"):
+            if property_ in impendaces:
                 setattr(self, internal_property, 1/sum_)
             else:
                 setattr(self, internal_property, sum_)
@@ -291,6 +296,8 @@ class System(Component):
         nyquist = lambda_func(frequencyband)
 
         plt.plot(nyquist.real, nyquist.imag)
+        arrows = np.asarray([nyquist[i] for i in range(len(nyquist)) if not i%5])
+        plt.plot(arrows.real, arrows.imag, "<-")
         plt.ylabel(r"Im[{}]/$\Omega$".format(self.name) if mode == "impedance" else r"Im[{}]/$S$".format(self.name))
         plt.xlabel(r"Re[{}]/$\Omega$".format(self.name) if mode == "impedance" else r"Re[{}]/$S$".format(self.name))
         plt.gcf().canvas.set_window_title("{} {}".format(mode, self.name))

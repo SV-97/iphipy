@@ -10,6 +10,7 @@ import Basics.Filters as fltr
 import Basics.Systems as sys
 import Metrology
 import threading
+import functools
 
 sp.init_printing()
 """Package Doc
@@ -113,7 +114,7 @@ def circuit_test():
     
     # Define your System
     f = sys.ee_symbol("f") # define your frequency
-    R1 = sys.Resistor("R1", 100) # define your components
+    R1 = sys.Resistor("R1", 100e3) # define your components
     R2 = sys.Resistor("R2", 100)
     R3 = sys.Resistor("R3", 1e3)
     L1 = sys.Inductance("L1", 10e-3, f)
@@ -127,5 +128,36 @@ def circuit_test():
     p2 = crct.plot(np.linspace(0,1/source3.frequency,100e3), t, complex_ = True)
     p1.join()
     p2.join()
-circuit_test()
+#  circuit_test()
 print("end")
+
+def play():
+    sp.init_printing()
+    f = sys.ee_symbol("f") # define your frequency
+    R1 = sys.Resistor("R1", 100) # define your components
+    R2 = sys.Resistor("R2", 100e3)
+    L1 = sys.Inductance("L1", 10e-3, f)
+    C1 = sys.Capacitor("C1", 10e-6, f)
+    Z1 = sys.System("Z1", (R2, C1), "parallel") # define your circuit
+    Z2 = sys.System("Z2", (R1, L1, Z1))
+    sp.pprint(Z2.symbolic_impedance)
+    sp.pprint(Z2.impedance)
+    p2 = Z2.nyquist(np.linspace(0,10e3, 1e6), f, mode="impedance")
+    p3 = Z2.nyquist(np.linspace(0,10e3, 1e6), f, mode="admittance")
+    
+    R1, R2, L1, C1 = sys.ee_symbol("R1,R2,L1,C1")
+    Z = R1+sp.I*2*sp.pi*f*L1+((1/R2)-sp.I*2*sp.pi*f*C1)/((1/R2)**2+(2*sp.pi*f*C1)**2)
+    sp.pprint(Z)
+    Z = sp.lambdify((R1,R2,L1,C1,f), Z)
+    Z = functools.partial(Z, 100, 100e3, 10e-3, 10e-6)
+    Z = np.vectorize(Z)
+    f = np.linspace(0,10e3, 1e6)
+    Z = Z(f)
+    plt.plot(Z.real, Z.imag, "->", label=r"Z")
+    plt.ylabel(r"Im[{}]/$\Omega$".format("Z"))
+    plt.xlabel(r"Re[{}]/$\Omega$".format("Z"))
+    plt.grid()
+    plt.show()
+    p2.join()
+play()
+    
